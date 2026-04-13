@@ -1,22 +1,34 @@
-# 🤖 Agent Nexus
+# Agent Nexus
 
-A centralized configuration repository for managing AI agent skills and MCP servers cross-platform. This project ensures that **Claude Code**, **Cursor**, and **Google Antigravity** share identical, high-performance developer configurations on any machine.
+A framework and configuration repository for managing AI agent environments across multiple IDEs. Define your skills, hooks, and MCP servers once in `nexus.yml` — then deploy to **Claude Code**, **Cursor**, **Google Antigravity**, and more from a single command.
 
-## 🚀 Overview
+## Overview
 
-This repository acts as a single point of truth for your agentic development environment. It uses [Agent Package Manager (APM)](https://github.com/microsoft/apm) and the [skills CLI](https://github.com/vercel-labs/skills) to resolve dependencies and deploy them globally via symlinks.
+Agent Nexus is building the best tool for unified AI agent environment management. It auto-discovers all asset types from packages (skills, hooks, commands, agents), declares MCP servers inline, deduplicates hooks, and includes a security review gate before writing to your global IDE configs.
 
-### Key Platforms Supported
-- **Claude Code**: Industry-leading agentic terminal interface.
-- **Cursor**: The AI-first code editor.
-- **Google Antigravity**: Advanced agentic coding assistant.
+### Why Nexus?
 
-## 🛠️ Getting Started
+| Feature | APM | Kasetto | **Nexus** |
+|---------|-----|---------|-----------|
+| Hybrid packages (skills + hooks + MCPs) | No | No | **Yes** |
+| Inline MCP declarations | No | No | **Yes** |
+| Hook management + deduplication | Buggy (42x duplication) | Not implemented | **Yes** |
+| Security review before deploy | No | No ([issue #15](https://github.com/pivoshenko/kasetto/issues/15)) | **Yes** |
+| Optional/conditional deps | No | No | **Yes** |
+| Project context system | No | No | **Yes** (via context-harness) |
+| Auto-discover package assets | No (type classification) | No (manual listing) | **Yes** |
+
+### Supported IDEs
+- **Claude Code** — skills, MCP servers, hooks
+- **Cursor** — skills, MCP servers, hooks
+- **Google Antigravity** — skills, MCP servers
+
+## Getting Started
 
 ### Prerequisites
-- **Python 3.8+** (for `apm-cli`)
-- **Node.js 18+** (for MCP servers and `skills`)
 - **Git**
+- **Node.js 18+** (for MCP servers that use npx)
+- **jq** and **yq** (for the nexus CLI)
 
 ### Installation & Deployment
 
@@ -25,58 +37,65 @@ This repository acts as a single point of truth for your agentic development env
 git clone https://github.com/lifan-builds/agent-nexus.git ~/Project/agent-nexus
 cd ~/Project/agent-nexus
 
-# 2. Install APM CLI (if not already installed)
-pip install apm-cli
+# 2. Add nexus to your PATH
+mkdir -p ~/.local/bin
+ln -snf "$(pwd)/nexus.sh" ~/.local/bin/nexus
 
 # 3. Deploy everything
-./deploy.sh
+nexus sync
 ```
 
-The `deploy.sh` script automates the entire setup:
-1. Runs `apm install` to fetch remote skills.
-2. Syncs MCP server configurations to **Claude** (`~/.claude.json`), **Cursor** (`~/.cursor/mcp.json`), and **Antigravity** (`~/.gemini/antigravity/mcp_config.json`). Removes the repo-local `.cursor/mcp.json` after APM so Cursor does not register MCP servers twice.
-3. Checks for the Xiaohongshu Go binary in `bin/` and ensures the optional `xiaohongshu-mcp` HTTP entry points at `http://localhost:18060/mcp` in Claude and Cursor.
-4. Creates symlinks from local modules to global IDE skill directories.
-5. Installs global packages via the skills CLI (`find-skills`).
+`nexus sync` automates the entire setup:
+1. Fetches packages from GitHub into `.nexus/cache/` (content-addressed by commit SHA).
+2. Auto-discovers all assets in each package (skills, hooks, commands, agents).
+3. Compiles and symlinks skills to all target IDE directories.
+4. Aggregates and deduplicates hooks across packages.
+5. Shows a security review of MCP changes before writing to global configs.
+6. Merges MCP server configs into Claude (`~/.claude.json`), Cursor (`~/.cursor/mcp.json`), and Antigravity (`~/.gemini/antigravity/mcp_config.json`).
+7. Generates `nexus.lock.yml` tracking what was deployed where.
 
-## 📦 Managed Assets
+## Managed Assets
 
-### 🧠 Installed Skills
-| Name | Source | Description |
-|------|--------|-------------|
-| `context-harness` | Local | Maintains project context (AGENTS.md, PLANS.md, etc.) |
-| `obra/superpowers` | GitHub | Advanced dev methodology (TDD, brainstorming, worktrees) |
-| `find-skills` | skills CLI | Discovery tool for the agent skills ecosystem |
+### Skills (15 total)
 
-### 🔌 MCP Servers
-Servers listed in `apm.yml` are merged into your global MCP configs when you run `./deploy.sh`:
-- **`sequential-thinking`**: Structured reasoning for complex problem-solving.
-- **`github-mcp`**: Full GitHub integration (issues, PRs, repositories).
-- **`playwright`**: Browser automation via the official Playwright MCP package.
-- **`context7`**: Real-time documentation and code example retrieval.
-- **`nitan-mcp`**: Community MCP (`@nitansde/mcp`).
-- **`notion-mcp`**: Official Notion integration.
+| Package | Skills | Description |
+|---------|--------|-------------|
+| `fantasy-cc/context-harness` | 1 | Project docs generation and context management |
+| `obra/superpowers` | 14 | TDD, brainstorming, code review, debugging, worktrees, parallel agents, and more |
+| `find-skills` (global) | 1 | Agent skill discovery tool |
 
-**Xiaohongshu (optional):** Not declared in `apm.yml`. Uses [xpzouying/xiaohongshu-mcp](https://github.com/xpzouying/xiaohongshu-mcp) Go binary in `bin/`. Run `scripts/xhs-relogin` once to authenticate, then `scripts/xhs-start` to start the server (HTTP on `localhost:18060`). `deploy.sh` ensures the HTTP MCP entry exists in both Claude Code and Cursor. The generated `cookies.json` is local session state and should never be committed.
+### MCP Servers
 
-## 🏗️ Project Structure
+| Name | Transport | Description |
+|------|-----------|-------------|
+| `sequential-thinking` | stdio | Structured reasoning |
+| `playwright` | stdio | Browser automation |
+| `context7` | stdio | Library documentation retrieval |
+| `nitan-mcp` | stdio | Discourse integration |
+| `xiaohongshu-mcp` | sse (optional) | Xiaohongshu content API via local Go server |
+| `github-mcp` | stdio (optional) | GitHub API integration |
+| `notion-mcp` | stdio (optional) | Notion workspace integration |
 
-- `apm.yml` — The heart of the configuration. Define your skills and MCPs here.
-- `deploy.sh` — The deployment engine that syncs this repo to your system.
-- `bin/` — Pre-built Go binaries for Xiaohongshu MCP.
-- `scripts/` — Helper scripts (`xhs-start`, `xhs-relogin`) for Xiaohongshu MCP management.
-- `context-harness/` — Local skill definitions for project management.
-- `AGENTS.md` — Core AI context for this repository.
+## Project Structure
+
+- `nexus.yml` — The manifest. Define packages, MCP servers, and targets here.
+- `.nexus/` — Package cache and compiled artifacts (gitignored).
+- `bin/` — Pre-built Go binaries for optional services.
+- `scripts/` — Helper scripts for optional services.
+- `AGENTS.md` — AI agent context for this repository.
 - `PLANS.md` — Active development roadmap.
 - `FINDINGS.md` — Research logs and discovery notes.
 - `EVALUATION.md` — Verification contracts and evaluation log.
 
-## 🧪 Development
+## Development
 
-To add a new skill to your toolkit:
-1. Create a subfolder with a `SKILL.md` (check `context-harness/` for reference).
-2. Add the dependency to `apm.yml`.
-3. Run `./deploy.sh` to update your global agent environment.
+To add a new package:
+1. Add a `repo:` entry under `packages:` in `nexus.yml`.
+2. Run `nexus sync` to fetch, discover, and deploy.
+
+To add an inline MCP server:
+1. Add to the `mcps:` section of `nexus.yml`.
+2. Run `nexus sync`.
 
 ---
-*Maintained by lfan. Powered by APM.*
+*Maintained by lfan. Powered by nexus.*

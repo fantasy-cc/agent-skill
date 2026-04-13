@@ -14,10 +14,10 @@ Thumbs.db
 __pycache__/
 
 
-# APM dependencies
-apm_modules/
+# Nexus cache and compiled outputs (reproducible via `nexus sync`)
+.nexus/
 
-# APM compiled outputs (reproducible via `apm install`)
+# Compiled outputs (reproduced by nexus sync)
 .claude/
 .cursor/
 .github/

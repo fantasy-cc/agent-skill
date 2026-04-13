@@ -1,60 +1,80 @@
 # Agent Guide
 
 ## Project Overview
-`agent-nexus` is a centralized configuration repository that acts as a global hub for AI tools, skills, and MCP servers. It uses Microsoft's Agent Package Manager (APM) and the vercel-labs skills CLI to resolve dependencies and compile instructions so that Cursor, Claude Code, and Google Antigravity can share identical configurations across the developer's entire machine.
+`agent-nexus` is a centralized configuration repository and framework for managing AI agent environments across multiple IDEs. It provides a single manifest (`nexus.yml`) that declares packages (skills, hooks, commands), MCP servers, and deployment targets — then compiles and deploys everything to Claude Code, Cursor, and Google Antigravity from one place. The project is building its own framework ("nexus") to replace Microsoft's APM, with the goal of being the best tool in this space — better than both APM and Kasetto.
 
 ## Tech Stack
-- **APM (Agent Package Manager)** via `apm-cli` — primary package manager
-- **skills CLI** (`npx skills`) — secondary, for vercel-labs ecosystem skills
+- **nexus** — custom agent environment manager (manifest + CLI, replacing APM)
+- **Bash + jq + yq** — implementation stack for nexus CLI (zero Python/Node runtime deps)
 - **Markdown** for skill definitions (`SKILL.md`)
-- **YAML** for manifests (`apm.yml`)
+- **YAML** for manifests (`nexus.yml`)
+- **Git** for package fetching (shallow clones at pinned refs)
 
 ## Project Structure
-- `apm.yml`: The core manifest detailing skills (APM + GitHub), MCP servers (`mcp:` for core, `optional_mcp:` for opt-in), and local paths.
-- `deploy.sh`: Runs `apm install`, prompts for optional MCPs, merges MCP entries from `apm.yml` into global configs (including `~/.claude.json`, `~/.cursor/mcp.json`, `~/.gemini/antigravity/mcp_config.json`), detects unmanaged entries in targets and offers to remove them, removes the repo-local `.cursor/mcp.json` after APM to avoid duplicate MCP registrations in Cursor, ensures the optional Xiaohongshu HTTP MCP entry is present when the Go binary is installed, and symlinks skills. Supports `--all` flag to auto-include optional MCPs and skip conflict prompts.
-- `bin/`: Pre-built Go binaries — `xiaohongshu-mcp` (MCP server) and `xiaohongshu-login` (one-time auth) from xpzouying/xiaohongshu-mcp.
-- `scripts/xhs-start`: Starts the xiaohongshu-mcp Go server in the background (HTTP on localhost:18060).
-- `scripts/xhs-relogin`: Re-runs the login flow when the XHS session expires.
-- `context-harness/`: Custom skill for generating/updating project context docs (AGENTS.md, PLANS.md, FINDINGS.md, EVALUATION.md, README.md) with auto-recovery hooks.
-- `apm_modules/`: Downloaded APM dependencies (obra/superpowers, etc.). Gitignored.
-- `.claude/skills/`, `.github/skills/`: Auto-generated compiled output folders created by APM.
-- `~/.agents/skills/find-skills`: Globally installed via skills CLI, symlinked into Claude Code.
-- Symlinks (e.g., `.cursor/skills`, `.agent/skills`): Maps APM output dynamically to their respective IDE configurations.
+- `nexus.yml`: The core manifest. Declares packages (GitHub repos or local paths), inline MCP servers, optional MCPs, and target IDEs. Replaces the old `apm.yml`.
+- `nexus.sh`: The nexus CLI entry point. Symlinked to `~/.local/bin/nexus` for global access. Run `nexus sync`, `nexus list`, `nexus doctor`, `nexus clean`.
+- `.nexus/`: Local cache and compiled output directory (gitignored). Contains:
+  - `cache/` — fetched packages keyed by `github.com/org/repo/commit-sha/`
+  - `compiled/` — intermediate build artifacts (per-IDE skills, merged hooks, MCP fragments)
+- `bin/`: Pre-built Go binaries — `xiaohongshu-mcp` (MCP server) from xpzouying/xiaohongshu-mcp.
+- `scripts/`: Helper scripts for optional services (`xhs-start`, `xhs-relogin`).
 
 ## Installed Skills & MCP Servers
 
-| Name | Type | Manager | Description |
-|------|------|---------|-------------|
-| `context-harness` | Skill (local) | APM | Project docs generation with FINDINGS.md and context management hooks |
-| `obra/superpowers` | Skill (GitHub) | APM | Agentic dev methodology — brainstorming, TDD, code review, worktrees (14 sub-skills) |
-| `find-skills` | Skill (global) | skills CLI | Discovers and installs skills from the open agent skills ecosystem |
-| `sequential-thinking` | MCP | APM | Structured reasoning server |
-| `playwright` | MCP | APM | Browser automation via Playwright |
-| `context7` | MCP | APM | Up-to-date library documentation retrieval |
-| `nitan-mcp` | MCP | APM | Community MCP (`@nitansde/mcp`) |
-| `github-mcp` (optional) | MCP | APM (`optional_mcp`) | GitHub API integration. Included via `--all` or interactive prompt. |
-| `notion-mcp` (optional) | MCP | APM (`optional_mcp`) | Official Notion API integration. Included via `--all` or interactive prompt. |
-| `xiaohongshu-mcp` (optional) | MCP | Manual / Go binary | **Not** declared in `apm.yml`. Uses [xpzouying/xiaohongshu-mcp](https://github.com/xpzouying/xiaohongshu-mcp) Go binary in `bin/`. Server runs locally on `http://localhost:18060/mcp`. Run `scripts/xhs-relogin` once to authenticate, then `scripts/xhs-start` to start. `deploy.sh` ensures the HTTP MCP entry exists in Claude Code and Cursor. |
+### Skills (from packages)
+
+| Package | Skill | Description |
+|---------|-------|-------------|
+| `fantasy-cc/context-harness` | context-harness | Project docs generation (AGENTS.md, PLANS.md, FINDINGS.md, EVALUATION.md, README.md) with auto-recovery hooks |
+| `obra/superpowers` | using-superpowers | Entry point for the superpowers workflow system |
+| `obra/superpowers` | brainstorming | Structured brainstorming methodology |
+| `obra/superpowers` | writing-plans | Plan creation and structuring |
+| `obra/superpowers` | executing-plans | Systematic plan execution |
+| `obra/superpowers` | test-driven-development | TDD workflow for agents |
+| `obra/superpowers` | systematic-debugging | Structured debugging methodology |
+| `obra/superpowers` | subagent-driven-development | Multi-agent orchestration patterns |
+| `obra/superpowers` | dispatching-parallel-agents | Parallel agent task distribution |
+| `obra/superpowers` | receiving-code-review | How to process code review feedback |
+| `obra/superpowers` | requesting-code-review | How to request and structure code reviews |
+| `obra/superpowers` | finishing-a-development-branch | Branch completion workflow |
+| `obra/superpowers` | using-git-worktrees | Git worktree patterns for agents |
+| `obra/superpowers` | verification-before-completion | Pre-completion verification checklist |
+| `obra/superpowers` | writing-skills | How to author new agent skills |
+| `find-skills` | find-skills | Discovers and installs skills from the open agent skills ecosystem (globally installed via skills CLI) |
+
+### MCP Servers (inline in nexus.yml)
+
+| Name | Transport | Description |
+|------|-----------|-------------|
+| `sequential-thinking` | stdio | Structured reasoning server |
+| `playwright` | stdio | Browser automation via Playwright |
+| `context7` | stdio | Up-to-date library documentation retrieval |
+| `nitan-mcp` | stdio | Community MCP for Discourse integration |
+| `xiaohongshu-mcp` (optional) | sse | Xiaohongshu content API via local Go server on localhost:18060 |
+| `github-mcp` (optional) | stdio | GitHub API integration (requires GITHUB_TOKEN) |
+| `notion-mcp` (optional) | stdio | Notion workspace integration |
 
 ## Development Workflow
-- To add a core APM skill or MCP server: Add to `apm.yml` under `mcp:`, then run `apm install` and `./deploy.sh`.
-- To add an optional MCP server: Add to `apm.yml` under `optional_mcp:`. It will be offered interactively during `./deploy.sh` or auto-included with `./deploy.sh --all`.
-- To add a skills-CLI skill: Run `npx skills add <repo>@<skill> -g -y`.
-- To deploy everything non-interactively: Run `./deploy.sh --all` (includes optional MCPs, keeps unmanaged entries).
-- To use the skills globally: Symlink `~/.cursor/skills`, `~/.claude/skills`, and `~/.gemini/antigravity/skills` to the locally generated folders inside this repository (or rely on `deploy.sh` symlinks where applicable).
+- To add a package: Add a `repo:` entry under `packages:` in `nexus.yml`, then run `nexus sync`.
+- To add an inline MCP: Add to the `mcps:` section of `nexus.yml`. Use `optional: true` or place under `optional_mcps:` for interactive prompting.
+- To add a local skill in development: Use `path: ./my-skill` under `packages:`.
+- To deploy everything: Run `nexus sync` (or `nexus sync --all` to auto-include optionals).
+- To install a skills-CLI skill globally: Run `npx skills add <repo>@<skill> -g -y`.
 
 ## Coding Conventions
-- New custom skills must be placed in their own subdirectories containing a `SKILL.md` file with YAML frontmatter (`name`, `description`).
-- `apm.yml` uses the APM v0.1 schema format (lists under `apm:` or `mcp:` keys, not maps). The custom `optional_mcp:` key is ignored by APM and handled by `deploy.sh`.
-- Non-APM-compliant packages (raw MCP repos) go under `mcp:`, not `apm:`.
+- Skills are directories containing a `SKILL.md` file. The directory name is the skill name.
+- Hooks are discovered from `hooks/hooks.json` (Claude Code format) and `hooks/hooks-cursor.json` (Cursor format) within packages.
+- `nexus.yml` is the single source of truth for all managed dependencies and MCP servers.
+- No package type classification — nexus auto-discovers all asset types (skills, hooks, commands, agents) from each package.
 
 ## Architecture Decisions
-- **Migration to APM**: We discontinued the manual `install.sh` shell script because APM elegantly handles resolving remote dependencies and formatting outputs for VS Code/Claude.
-- **Global Proxy**: Because APM outputs to the local project, we treat this repository as the single point-of-truth and physically symlink IDE global folders into it.
-- **Dual Package Manager**: APM for skills with `apm.yml`/`SKILL.md` structure; skills CLI for the vercel-labs ecosystem (e.g., find-skills). Both coexist without conflict.
-- **Puppeteer → Playwright**: Replaced puppeteer MCP with Microsoft's official playwright MCP server for browser automation.
+- **APM to nexus migration**: APM misclassified hybrid packages (superpowers' 14 skills were never deployed because APM labeled it `hook_package`), created 42 duplicate hook entries (no dedup), and couldn't declare inline MCPs. `deploy.sh` was already doing most of the real work. We're building nexus to replace both APM and deploy.sh with a unified tool.
+- **Unified package model**: A package can provide any combination of skills, hooks, commands, agents, and MCPs. No type classification — auto-discover via file patterns (SKILL.md, hooks.json, etc.).
+- **Inline MCP declarations**: Most MCP servers are just `npx <package>`. Declaring them directly in the manifest eliminates the need for separate git repos.
+- **Hook deduplication**: Hooks are deduplicated by content hash (minus metadata). Prevents the 42x duplication bug from APM.
+- **Security review gate**: Before writing MCP configs to global IDE files, nexus shows what commands will be registered and prompts for confirmation. Addresses a known Kasetto security gap (issue #15).
+- **Content-addressed cache**: Packages cached by commit SHA at `.nexus/cache/github.com/org/repo/sha/`. Immutable snapshots enable instant rollbacks and safe concurrent operations.
+- **Bash + jq + yq**: Zero Python/Node runtime dependencies for the tool itself. Single script distribution.
+- **Global Proxy via symlinks**: This repository is the single point-of-truth; IDE global skill directories symlink into it.
 - **FINDINGS.md separation**: External/untrusted content is logged to FINDINGS.md (not PLANS.md) to prevent prompt injection via auto-read hooks.
-- **Claude/Cursor MCP + APM**: `deploy.sh` merges `apm.yml` MCP entries into `~/.claude.json` and `~/.cursor/mcp.json`, then deletes the workspace `.cursor/mcp.json` after `apm install` to prevent duplicate server entries when this repo is open in Cursor.
-- **Optional MCPs**: `github-mcp` and `notion-mcp` are declared under `optional_mcp:` in `apm.yml` rather than `mcp:`. This key is not an APM standard — APM ignores it. `deploy.sh` reads it and either prompts interactively or auto-includes with `--all`.
-- **Conflict Detection**: `deploy.sh` now compares managed MCPs (core + accepted optional + xiaohongshu) against entries in each target config. Unmanaged entries are flagged with options to keep, remove all, or decide interactively. Same logic applies to skill symlinks.
-- **Xiaohongshu MCP**: Headless Playwright-based packages (Node/Python) proved flaky against the live site. The Chrome extension approach (x-mcp) hit page load timeouts on the hosted endpoint. The current approach is the **xpzouying/xiaohongshu-mcp** Go binary — 12.5k+ stars, HTTP transport on localhost:18060, no Playwright dependency. Binary lives in `bin/`; use `scripts/xhs-relogin` + `scripts/xhs-start`.
+- **Xiaohongshu MCP**: Uses xpzouying/xiaohongshu-mcp Go binary (HTTP on localhost:18060) after headless Playwright approaches proved flaky. Declared as optional SSE MCP in nexus.yml.

@@ -1,0 +1,58 @@
+# nexus.yml — Agent environment manifest
+# Defines packages, MCP servers, and target IDEs for cross-platform deployment.
+# Run `nexus sync` to fetch, compile, and deploy all assets.
+
+name: agent-nexus
+version: 1.0.0
+
+# IDEs to deploy skills, hooks, and MCP configs to
+targets:
+  - claude         # ~/.claude/skills/, ~/.claude.json
+  - cursor         # ~/.cursor/skills/, ~/.cursor/mcp.json
+  - antigravity    # ~/.gemini/antigravity/skills/, ~/.gemini/antigravity/mcp_config.json
+
+# Packages from GitHub (auto-discovered: skills, hooks, commands, agents)
+packages:
+  - repo: fantasy-cc/context-harness
+    ref: main
+
+  - repo: obra/superpowers
+    ref: v5.0.4
+
+# Inline MCP server declarations (no separate repo needed)
+mcps:
+  - name: sequential-thinking
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+
+  - name: playwright
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-playwright"]
+
+  - name: context7
+    command: npx
+    args: ["-y", "@upstash/context7-mcp@latest"]
+
+  - name: nitan-mcp
+    command: npx
+    args: ["-y", "@nitansde/mcp@latest"]
+
+  - name: xiaohongshu-mcp
+    url: "http://localhost:18060/sse"
+    transport: sse
+    optional: true
+    description: "Xiaohongshu content API (requires local Go server)"
+
+# Optional MCPs (prompted interactively, or auto-included with --all)
+optional_mcps:
+  - name: github-mcp
+    command: npx
+    args: ["-y", "@modelcontextprotocol/server-github"]
+    env:
+      GITHUB_TOKEN: "${GITHUB_TOKEN}"
+    description: "GitHub API access (requires GITHUB_TOKEN)"
+
+  - name: notion-mcp
+    command: npx
+    args: ["-y", "notion-mcp"]
+    description: "Notion workspace integration"

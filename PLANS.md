@@ -1,67 +1,115 @@
-# agent-nexus — Initial Bootstrap
+# agent-nexus — Nexus Framework v0.1
 
 This is a living document. Keep Progress, Surprises & Discoveries,
 Decision Log, and Outcomes & Retrospective up to date as work proceeds.
 
 ## Handoff (session state)
 
-- **Last updated:** 2026-04-03
-- **Focus:** Xiaohongshu MCP switched from broken x-mcp (hosted endpoint) to **xpzouying/xiaohongshu-mcp** Go binary (localhost:18060).
-- **Done:** Go binaries in `bin/`; `scripts/xhs-start` + `scripts/xhs-relogin` added; legacy Node/Python XHS tooling removed; `~/.cursor/mcp.json` updated to localhost URL; `deploy.sh` simplified; Claude Code login and `search_feeds` verified successfully.
-- **Open:** Keep `deploy.sh` aligned with Claude Code's real MCP config path (`~/.claude.json`) and keep generated session state out of git.
+- **Last updated:** 2026-04-12
+- **Focus:** Nexus framework v0.1 complete. CLI implemented and validated. Phase 3 (polish) is next.
+- **Done:** `nexus.yml` manifest created; `nexus.sh` CLI implemented (sync, list, doctor, clean); 15 skills deployed (including all 14 superpowers skills that APM missed); hooks deduplicated from 84 to 1; MCP configs synced to 3 IDEs; lockfile generated.
+- **Open:** Remove `deploy.sh`. Add `nexus init`, `nexus add`, `nexus update`. Consider Rust/Go rewrite.
 
 ## Purpose / Big Picture
-Establish a single, APM-powered repository that centrally manages agent skills and MCP servers globally for all local IDEs (Cursor, Claude Code, Antigravity).
+Build a best-in-class agent environment manager ("nexus") that deploys skills, hooks, and MCP servers to all AI IDEs from a single manifest. Replace Microsoft's APM (buggy, limited) and surpass Kasetto (no hooks, no hybrid packages, no security gates) with a framework that handles the full lifecycle: fetch, auto-discover, compile, review, deploy, and clean.
 
 ## Progress
+
+### Phase 0: Bootstrap (completed)
 - [x] Initial legacy `install.sh` removal
-- [x] APM Initialization and `apm.yml` configuration
+- [x] APM initialization and `apm.yml` configuration
 - [x] First `apm install` and lockfile generation
 - [x] Creation of symlink commands for global IDE hookups
-- [x] Run `context-harness` to bootstrap `AGENTS.md`, `PLANS.md`, and `README.md`
-- [x] (2026-03-22) Enhanced `context-harness` with FINDINGS.md, auto-recovery hooks, and context management rules (2-Action Rule, Read Before Decide, 3-Strike Error Protocol)
-- [x] (2026-03-22) Replaced puppeteer MCP with Anthropic's official playwright MCP server
-- [x] (2026-03-22) Installed `obra/superpowers` via APM (14 sub-skills, 6 hooks)
-- [x] (2026-03-26) Renamed local skill to `context-harness` and generated `EVALUATION.md`.
-- [x] (2026-03-26) Extracted `context-harness` into its own standalone GitHub repository (`fantasy-cc/context-harness`) and updated `apm.yml` to pull from remote.
-- [x] (2026-04-03) Cursor: merge `apm.yml` MCP list into `~/.cursor/mcp.json`; remove generated workspace `.cursor/mcp.json` on deploy to stop duplicate MCP entries.
-- [x] (2026-04-03) Xiaohongshu: adopt **x-mcp** (browser extension + hosted HTTP MCP); remove `xiaohongshu-mcp` from `apm.yml`.
-- [x] (2026-04-03) Xiaohongshu: replace broken x-mcp with **xpzouying/xiaohongshu-mcp** Go binary; remove all legacy Node/Python XHS tooling; update configs.
-- [x] (2026-04-04) Complete first login via `scripts/xhs-relogin` and verify `check_login_status` plus `search_feeds` from Claude Code.
+- [x] Run `context-harness` to bootstrap project docs
+- [x] Enhanced `context-harness` with FINDINGS.md, auto-recovery hooks
+- [x] Replaced puppeteer MCP with playwright MCP server
+- [x] Installed `obra/superpowers` via APM
+- [x] Extracted `context-harness` to GitHub (`fantasy-cc/context-harness`)
+- [x] Cursor MCP merge into `~/.cursor/mcp.json`
+- [x] Xiaohongshu MCP via Go binary (localhost:18060)
+- [x] Fixed Antigravity MCP loading (npx path resolution)
+
+### Phase 1: Nexus design + manifest + docs (current)
+- [x] (2026-04-12) Research Kasetto — identified gaps: no hooks, no hybrid packages, no inline MCPs, no security review, security issue #15
+- [x] (2026-04-12) Research ecosystem — APM, Kasetto, skills CLI, killer-skills compared
+- [x] (2026-04-12) Documented APM bugs — 42x hook duplication, hybrid package misclassification (superpowers skills never deployed)
+- [x] (2026-04-12) Designed nexus.yml manifest schema
+- [x] (2026-04-12) Created `nexus.yml` with all deps migrated from `apm.yml`
+- [x] (2026-04-12) Updated all project docs (AGENTS.md, PLANS.md, FINDINGS.md, EVALUATION.md, README.md)
+- [x] (2026-04-12) Removed APM artifacts (`apm.yml`, `apm.lock.yaml`)
+- [x] (2026-04-12) Updated `.gitignore` for nexus
+
+### Phase 2: Nexus CLI implementation (complete)
+- [x] (2026-04-12) Implement `nexus sync` — fetch packages, auto-discover assets, compile skills, merge MCPs, aggregate+dedup hooks, security review gate
+- [x] (2026-04-12) Implement `nexus list` — show installed packages, skills, MCPs
+- [x] (2026-04-12) Implement `nexus doctor` — health checks (symlinks, MCP configs, hook dedup, lockfile consistency)
+- [x] (2026-04-12) Implement `nexus clean` — remove all tracked artifacts using lockfile
+- [x] (2026-04-12) Generate `nexus.lock.yml` with resolved commits, content hashes, and deployment paths
+- [x] (2026-04-12) Validated: 15 skills deployed (vs 1 with APM), hooks deduplicated 84->1, MCPs synced to 3 IDEs
+- [x] (2026-04-12) Removed `deploy.sh` — nexus sync validated end-to-end
+- [x] (2026-04-12) Fixed broken Cursor skill symlink (stale `project-context` from old repo)
+- [x] (2026-04-12) Added `nexus` to PATH via `~/.local/bin/nexus` symlink
+
+### Phase 3: Go rewrite + distribution
+- [ ] Rewrite `nexus.sh` in Go as `nexus` single binary
+- [ ] Port: YAML/JSON parsing (encoding/json, gopkg.in/yaml.v3)
+- [ ] Port: git operations (go-git or shelling out to git)
+- [ ] Port: all 4 subcommands (sync, list, doctor, clean)
+- [ ] Add: `nexus init` — generate nexus.yml from scratch or migrate from apm.yml
+- [ ] Add: `nexus add <repo>` — add a package interactively
+- [ ] Add: `nexus update [package]` — bump to latest ref
+- [ ] Shell completions (cobra generates bash, zsh, fish, powershell)
+- [ ] Cross-compile for macOS (arm64, amd64), Linux (amd64)
+- [ ] GitHub releases + `brew install`
 
 ## Surprises & Discoveries
-- APM does not inherently contain an `antigravity` compilation target, so we opted to route Google Antigravity to the `.github/skills` compilation using symlinks, which effectively acts as a universal agent output.
-- Non-APM-compliant repositories (like raw MCP github repositories) must be configured under the `mcp:` array in `apm.yml` rather than the `apm:` array to prevent parser failure.
-- `chrisboden/find-skills` is NOT a valid APM package (just a README catalog). The canonical `find-skills` lives in `vercel-labs/skills` and installs via `npx skills add`, not APM.
-- APM and the skills CLI coexist without conflict — APM deploys to `.claude/skills/`, skills CLI deploys to `~/.agents/skills/` and symlinks into `~/.claude/skills/`.
-- Hooks defined in SKILL.md YAML frontmatter are auto-executed by Claude Code — no separate settings.json configuration needed.
-- Xiaohongshu automation via headless Playwright (Node/Python MCP packages) hit recurring issues: certificate/load semantics, fragile login selectors, and signing/session drift; extension-backed MCP is the practical default.
-- x-mcp (Chrome extension + `mcp.aredink.com` hosted endpoint) failed with persistent page load timeouts; replaced with the locally-run Go binary (xpzouying/xiaohongshu-mcp, 12.5k+ stars) serving MCP over HTTP at localhost:18060.
+- APM does not inherently contain an `antigravity` compilation target; we route Google Antigravity to `.github/skills` via symlinks.
+- APM and the skills CLI coexist without conflict — different deploy paths.
+- Hooks defined in SKILL.md YAML frontmatter are auto-executed by Claude Code without separate settings.json configuration.
+- APM creates 42 duplicate hook entries in `.cursor/hooks.json` — no deduplication logic exists.
+- APM classifies `obra/superpowers` as `hook_package` only, missing 14 skills, 3 commands, and 1 agent definition.
+- Kasetto (the closest competitor) explicitly lists "hooks management" and "agent config management" as unimplemented roadmap items — these are our key differentiators.
+- Kasetto has a security issue (#15): untrusted repos can become executable MCP config without approval gates.
 
 ## Decision Log
-- **Adopted APM over Bash Scripts**: Removed `install.sh` to leverage Microsoft APM for declarative dependency management.
-- **Adopted Symlink Strategy**: Recommended symlinking `~/.cursor/skills` and equivalent folders to this repository to create a true, zero-config global setup.
-- **Dual Package Manager**: APM for structured skills; skills CLI for vercel-labs ecosystem. Both deploy to different paths and don't conflict.
-- **Puppeteer → Playwright**: Switched to `@anthropic-ai/mcp-server-playwright` (Anthropic's official server) for better maintenance and capability.
-- **FINDINGS.md as security boundary**: External content separated from PLANS.md to prevent prompt injection via auto-read hooks.
-- **Xiaohongshu via Go binary**: Replaced x-mcp (flaky hosted endpoint) with xpzouying/xiaohongshu-mcp Go binary. Binary in `bin/`, HTTP MCP at localhost:18060. `deploy.sh` ensures the optional HTTP entry exists in `~/.claude.json` and `~/.cursor/mcp.json`.
+- **Adopted APM over Bash Scripts** (2026-03): Removed `install.sh` to leverage APM for declarative dependency management.
+- **Adopted Symlink Strategy** (2026-03): Symlink global IDE skill dirs into this repo for zero-config setup.
+- **Dual Package Manager** (2026-03): APM for structured skills; skills CLI for vercel-labs ecosystem.
+- **Puppeteer to Playwright** (2026-03): Switched to Anthropic's official playwright MCP server.
+- **FINDINGS.md as security boundary** (2026-03): External content separated from PLANS.md to prevent prompt injection.
+- **Xiaohongshu via Go binary** (2026-04): Replaced flaky headless Playwright and x-mcp approaches.
+- **APM to nexus migration** (2026-04-12): APM's bugs (hook duplication, hybrid package misclassification) and limitations (no inline MCPs, no security review) made it a liability. deploy.sh was already doing most of the work. Building nexus as a unified replacement that also surpasses Kasetto.
+- **Unified package model** (2026-04-12): Eliminated package type classification. Auto-discover all asset types via file patterns. A package can provide skills + hooks + commands + agents + MCPs.
+- **Security review gate** (2026-04-12): Show MCP commands before writing to global config. Addresses Kasetto's security gap.
+- **Shell prototype, Go for v1.0** (2026-04-12): Bash script for rapid prototyping and design iteration. Go chosen over Rust for v1.0 rewrite because: single static binary like Rust, much faster to write (no borrow checker), go-git for native git ops, built-in YAML/JSON, easy cross-compilation, already in the project stack (xiaohongshu-mcp binary). Shell stays as the working spec.
 
 ## Outcomes & Retrospective
-The core transition to an APM-based architecture has successfully replaced handwritten copying scripts. The toolkit includes 3 skills (context-harness, superpowers, find-skills) and multiple MCP servers declared in `apm.yml` (including playwright, context7, nitan-mcp, notion-mcp), with auto-recovery hooks for session continuity. Deployment now targets **Claude Code** and **Cursor** MCP config globally. Xiaohongshu is handled outside the manifest via the local Go HTTP server, with helper scripts and deploy-time MCP registration kept in-repo. The `context-harness` skill supports explicit evaluation contracts (`EVALUATION.md`) and is consumed from GitHub via APM.
+
+### Phase 0 (Bootstrap) — Complete
+The APM-based architecture successfully replaced handwritten copying scripts. Deployed 3 skills and 6+ MCP servers across Claude Code, Cursor, and Antigravity. However, APM proved to be a bottleneck: hybrid packages weren't fully deployed, hooks accumulated duplicates, and `deploy.sh` grew to 530 lines compensating for APM's limitations.
+
+### Phase 1 (Nexus Design) — Complete
+Researched the ecosystem (Kasetto, APM, skills CLI, killer-skills). Identified Kasetto's gaps and APM's bugs. Designed `nexus.yml` manifest with unified package model, inline MCP declarations, and optional dependency support. Migrated all configuration and updated all project documentation.
+
+### Phase 2 (CLI Implementation) — Complete
+Implemented `nexus.sh` with all 4 subcommands (sync, list, doctor, clean). Key results: 15 skills deployed (vs 1 with APM), hooks deduplicated from 84 to 1, MCP configs synced to 3 IDEs, lockfile generated with full discovery metadata. Security review gate shows MCP commands before writing. Removed `deploy.sh`. Added `nexus` to global PATH.
 
 ## Context and Orientation
-The repository consists of `apm.yml` for dependencies, `deploy.sh` for global sync (skills + MCP JSON for Claude, Cursor, Antigravity), local subdirectories (e.g. `context-harness/`) for custom skills, `scripts/` for optional Xiaohongshu troubleshooting, and `apm_modules/` for downloaded dependencies. Skills are also installed globally via the skills CLI (`~/.agents/skills/`). The context-harness skill maintains five documents (AGENTS.md, PLANS.md, FINDINGS.md, EVALUATION.md, README.md) with context management rules.
+The repository contains `nexus.yml` as the central manifest, `deploy.sh` as the legacy deployment script (being replaced), `bin/` for optional Go binaries, and `scripts/` for helper utilities. The `.nexus/` directory (gitignored) will hold the package cache and compiled artifacts once the CLI is implemented. Skills are also installed globally via the skills CLI (`~/.agents/skills/`). The context-harness skill maintains five documents (AGENTS.md, PLANS.md, FINDINGS.md, EVALUATION.md, README.md).
 
 ## Plan of Work
-- Future tasks involve adding SSH auth functionality so private `git@` repos can be downloaded.
-- Integrate more generic workflows into their own subdirectories with `SKILL.md`.
-- Evaluate additional domain-specific skills (frontend-design, web-design-guidelines) as needed.
-- **Xiaohongshu:** Run `scripts/xhs-relogin` to complete initial auth, start server with `scripts/xhs-start`, then validate tools end-to-end from Cursor.
+1. **Implement `nexus.sh`** — the core CLI script with `sync`, `list`, `doctor`, and `clean` subcommands. Start with `sync` as it's the critical path.
+2. **Validate against deploy.sh** — ensure nexus sync produces identical output for skills and MCPs.
+3. **Remove deploy.sh** — once nexus sync is validated end-to-end.
+4. **Add convenience commands** — `nexus init`, `nexus add`, `nexus update`.
+5. **Evaluate rewrite** — if bash + jq + yq proves limiting, consider Rust/Go for v2.
 
 ## Validation and Acceptance
-- Verified that `apm install` writes the dependencies efficiently.
-- Verified IDE integrations recognize the compiled Markdown outputs.
-- Verified `obra/superpowers` hooks integrated into Claude Code, Cursor, and GitHub.
-- Verified `find-skills` symlinked into `~/.claude/skills/` and recognized by Claude Code.
-- **Cursor MCP:** `deploy.sh` updates `~/.cursor/mcp.json` from `apm.yml` without removing manually added servers (merge-by-name).
-- **Xiaohongshu (Go binary):** Verified in Claude Code: `check_login_status` succeeds and `search_feeds` returns live results.
+- `nexus.yml` is valid YAML and contains all dependencies from the old `apm.yml`
+- `nexus sync` fetches packages, auto-discovers all assets (skills, hooks, commands, agents)
+- Skills are symlinked to all target IDE directories
+- MCP configs are merged into `~/.claude.json`, `~/.cursor/mcp.json`, `~/.gemini/antigravity/mcp_config.json`
+- Hooks are aggregated and deduplicated (no more 42x duplication)
+- Security review gate displays changes before writing
+- `nexus.lock.yml` tracks what was deployed where
+- `nexus clean` removes all tracked artifacts cleanly
