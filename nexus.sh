@@ -114,7 +114,7 @@ fetch_package() {
 
     local cache_path="$CACHE_DIR/github.com/$org/$repo_name/$resolved_sha"
 
-    if [ -f "$cache_path/.nexus-fetched" ]; then
+    if [ -f "${cache_path}.fetched" ]; then
         unchanged "$repo@${resolved_sha:0:7} (cached)"
         echo "$cache_path"
         return 0
@@ -135,7 +135,8 @@ fetch_package() {
         mv "${cache_path}.tmp" "$cache_path"
     fi
 
-    touch "$cache_path/.nexus-fetched"
+    # Marker goes alongside the dir, not inside it (to avoid polluting skill content)
+    touch "${cache_path}.fetched"
     ok "$repo@${resolved_sha:0:7} (fetched)"
     echo "$cache_path"
 }
@@ -821,7 +822,7 @@ cmd_doctor() {
     # Check cache
     if [ -d "$CACHE_DIR" ]; then
         local pkg_count
-        pkg_count=$(find "$CACHE_DIR" -name ".nexus-fetched" 2>/dev/null | wc -l | tr -d ' ')
+        pkg_count=$(find "$CACHE_DIR" -name "*.fetched" 2>/dev/null | wc -l | tr -d ' ')
         ok "Package cache: $pkg_count packages cached"
     else
         warn "Package cache: empty (run nexus sync)"
